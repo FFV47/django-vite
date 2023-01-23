@@ -14,24 +14,16 @@ register = template.Library()
 DJANGO_VITE_DEV_MODE = getattr(settings, "DJANGO_VITE_DEV_MODE", False)
 
 # Default Vite server protocol (http or https)
-DJANGO_VITE_DEV_SERVER_PROTOCOL = getattr(
-    settings, "DJANGO_VITE_DEV_SERVER_PROTOCOL", "http"
-)
+DJANGO_VITE_DEV_SERVER_PROTOCOL = getattr(settings, "DJANGO_VITE_DEV_SERVER_PROTOCOL", "http")
 
 # Default vite server hostname.
-DJANGO_VITE_DEV_SERVER_HOST = getattr(
-    settings, "DJANGO_VITE_DEV_SERVER_HOST", "localhost"
-)
+DJANGO_VITE_DEV_SERVER_HOST = getattr(settings, "DJANGO_VITE_DEV_SERVER_HOST", "localhost")
 
 # Default Vite server port.
-DJANGO_VITE_DEV_SERVER_PORT = getattr(
-    settings, "DJANGO_VITE_DEV_SERVER_PORT", 3000
-)
+DJANGO_VITE_DEV_SERVER_PORT = getattr(settings, "DJANGO_VITE_DEV_SERVER_PORT", 5173)
 
 # Default Vite server path to HMR script.
-DJANGO_VITE_WS_CLIENT_URL = getattr(
-    settings, "DJANGO_VITE_WS_CLIENT_URL", "@vite/client"
-)
+DJANGO_VITE_WS_CLIENT_URL = getattr(settings, "DJANGO_VITE_WS_CLIENT_URL", "@vite/client")
 
 # Location of Vite compiled assets (only used in Vite production mode).
 # Must be included in your "STATICFILES_DIRS".
@@ -40,9 +32,7 @@ DJANGO_VITE_WS_CLIENT_URL = getattr(
 DJANGO_VITE_ASSETS_PATH = Path(getattr(settings, "DJANGO_VITE_ASSETS_PATH"))
 
 # Prefix for STATIC_URL
-DJANGO_VITE_STATIC_URL_PREFIX = getattr(
-    settings, "DJANGO_VITE_STATIC_URL_PREFIX", ""
-)
+DJANGO_VITE_STATIC_URL_PREFIX = getattr(settings, "DJANGO_VITE_STATIC_URL_PREFIX", "")
 
 DJANGO_VITE_STATIC_ROOT = (
     DJANGO_VITE_ASSETS_PATH
@@ -63,9 +53,7 @@ DJANGO_VITE_LEGACY_POLYFILLS_MOTIF = getattr(
     settings, "DJANGO_VITE_LEGACY_POLYFILLS_MOTIF", "legacy-polyfills"
 )
 
-DJANGO_VITE_STATIC_URL = urljoin(
-    settings.STATIC_URL, DJANGO_VITE_STATIC_URL_PREFIX
-)
+DJANGO_VITE_STATIC_URL = urljoin(settings.STATIC_URL, DJANGO_VITE_STATIC_URL_PREFIX)
 
 # Make sure 'DJANGO_VITE_STATIC_URL' finish with a '/'
 if DJANGO_VITE_STATIC_URL[-1] != "/":
@@ -120,8 +108,7 @@ class DjangoViteAssetLoader:
 
         if not self._manifest or path not in self._manifest:
             raise RuntimeError(
-                f"Cannot find {path} in Vite manifest "
-                f"at {DJANGO_VITE_MANIFEST_PATH}"
+                f"Cannot find {path} in Vite manifest " f"at {DJANGO_VITE_MANIFEST_PATH}"
             )
 
         tags = []
@@ -141,9 +128,7 @@ class DjangoViteAssetLoader:
 
         return "\n".join(tags)
 
-    def _generate_css_files_of_asset(
-        self, path: str, already_processed: List[str]
-    ) -> List[str]:
+    def _generate_css_files_of_asset(self, path: str, already_processed: List[str]) -> List[str]:
         """
         Generates all CSS tags for dependencies of an asset.
 
@@ -160,11 +145,7 @@ class DjangoViteAssetLoader:
 
         if "imports" in manifest_entry:
             for import_path in manifest_entry["imports"]:
-                tags.extend(
-                    self._generate_css_files_of_asset(
-                        import_path, already_processed
-                    )
-                )
+                tags.extend(self._generate_css_files_of_asset(import_path, already_processed))
 
         if "css" in manifest_entry:
             for css_path in manifest_entry["css"]:
@@ -200,8 +181,7 @@ class DjangoViteAssetLoader:
 
         if not self._manifest or path not in self._manifest:
             raise RuntimeError(
-                f"Cannot find {path} in Vite manifest "
-                f"at {DJANGO_VITE_MANIFEST_PATH}"
+                f"Cannot find {path} in Vite manifest " f"at {DJANGO_VITE_MANIFEST_PATH}"
             )
 
         return urljoin(DJANGO_VITE_STATIC_URL, self._manifest[path]["file"])
@@ -241,8 +221,7 @@ class DjangoViteAssetLoader:
                 )
 
         raise RuntimeError(
-            f"Vite legacy polyfills not found in manifest "
-            f"at {DJANGO_VITE_MANIFEST_PATH}"
+            f"Vite legacy polyfills not found in manifest " f"at {DJANGO_VITE_MANIFEST_PATH}"
         )
 
     def generate_vite_legacy_asset(
@@ -276,8 +255,7 @@ class DjangoViteAssetLoader:
 
         if not self._manifest or path not in self._manifest:
             raise RuntimeError(
-                f"Cannot find {path} in Vite manifest "
-                f"at {DJANGO_VITE_MANIFEST_PATH}"
+                f"Cannot find {path} in Vite manifest " f"at {DJANGO_VITE_MANIFEST_PATH}"
             )
 
         manifest_entry = self._manifest[path]
@@ -303,8 +281,7 @@ class DjangoViteAssetLoader:
             self._manifest = json.loads(manifest_content)
         except Exception as error:
             raise RuntimeError(
-                f"Cannot read Vite manifest file at "
-                f"{DJANGO_VITE_MANIFEST_PATH} : {str(error)}"
+                f"Cannot read Vite manifest file at " f"{DJANGO_VITE_MANIFEST_PATH} : {str(error)}"
             )
 
     @classmethod
@@ -347,6 +324,32 @@ class DjangoViteAssetLoader:
             {"type": "module"},
         )
 
+    @classmethod
+    def generate_react_refresh(cls) -> str:
+        """
+        Generates the script tag for the Vite React Plugin for HMR.
+        Only used in development, in production this method returns
+        an empty string.
+
+        Returns:
+            str -- The script tag or an empty string.
+        """
+
+        if not DJANGO_VITE_DEV_MODE:
+            return ""
+
+        body = f"""
+            import RefreshRuntime from "{DjangoViteAssetLoader._generate_vite_server_url("@react-refresh")}"
+            RefreshRuntime.injectIntoGlobalHook(window)
+            window.$RefreshReg$ = () => {{}}
+            window.$RefreshSig$ = () => (type) => type
+            window.__vite_plugin_react_preamble_installed__ = true
+        """
+        return cls._generate_empty_script_tag(
+            body,
+            {"type": "module"},
+        )
+
     @staticmethod
     def _generate_script_tag(src: str, attrs: Dict[str, str]) -> str:
         """
@@ -363,11 +366,29 @@ class DjangoViteAssetLoader:
             str -- The script tag.
         """
 
-        attrs_str = " ".join(
-            [f'{key}="{value}"' for key, value in attrs.items()]
-        )
+        attrs_str = " ".join([f'{key}="{value}"' for key, value in attrs.items()])
 
         return f'<script {attrs_str} src="{src}"></script>'
+
+    @staticmethod
+    def _generate_empty_script_tag(body: str, attrs: Dict[str, str]) -> str:
+        """
+        Generates an empty HTML script tag.
+
+        Arguments:
+            src {str} -- Source of the script.
+
+        Keyword Arguments:
+            attrs {Dict[str, str]} -- List of custom attributes
+                for the tag.
+
+        Returns:
+            str -- The script tag.
+        """
+
+        attrs_str = " ".join([f'{key}="{value}"' for key, value in attrs.items()])
+
+        return f"<script {attrs_str} >{body}</script>"
 
     @staticmethod
     def _generate_stylesheet_tag(href: str) -> str:
@@ -402,10 +423,6 @@ class DjangoViteAssetLoader:
         )
 
 
-# Make Loader instance at startup to prevent threading problems
-DjangoViteAssetLoader.instance()
-
-
 @register.simple_tag
 @mark_safe
 def vite_hmr_client() -> str:
@@ -419,6 +436,21 @@ def vite_hmr_client() -> str:
     """
 
     return DjangoViteAssetLoader.generate_vite_ws_client()
+
+
+@register.simple_tag
+@mark_safe
+def vite_react_refresh() -> str:
+    """
+    Generates the script tag for the Vite React Plugin for HMR.
+    Only used in development, in production this method returns
+    an empty string.
+
+    Returns:
+        str -- The script tag or an empty string.
+    """
+
+    return DjangoViteAssetLoader.generate_react_refresh()
 
 
 @register.simple_tag
@@ -500,9 +532,7 @@ def vite_legacy_polyfills(**kwargs: Dict[str, str]) -> str:
         str -- The script tag to the polyfills.
     """
 
-    return DjangoViteAssetLoader.instance().generate_vite_legacy_polyfills(
-        **kwargs
-    )
+    return DjangoViteAssetLoader.instance().generate_vite_legacy_polyfills(**kwargs)
 
 
 @register.simple_tag
@@ -534,6 +564,4 @@ def vite_legacy_asset(
 
     assert path is not None
 
-    return DjangoViteAssetLoader.instance().generate_vite_legacy_asset(
-        path, **kwargs
-    )
+    return DjangoViteAssetLoader.instance().generate_vite_legacy_asset(path, **kwargs)

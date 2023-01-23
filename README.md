@@ -33,21 +33,32 @@ Then in your ViteJS config file :
 - Set the `base` options the same as your `STATIC_URL` Django setting.
 - Set the `build.outDir` path to where you want the assets to compiled.
 - Set the `build.manifest` options to `true`.
+- Set server.origin to match Vite dev server. This is needed for assets such as images to load
+  properly.
 - As you are in SSR and not in SPA, you don't have an `index.html` that
   ViteJS can use to determine which files to compile. You need to tell it
   directly. In your ViteJS config file add the following :
 
 ```javascript
 export default defineConfig({
+  ...
+  base: "/static/",
+  server: {
+    origin: "http://localhost:5173",
+  },
   build {
+    // generate manifest.json in outDir
+    manifest: true,
     ...
     rollupOptions: {
+      // overwrite default .html entry
       input: {
-        <unique key>: '<path to your asset>'
+        <unique key>: '<path to your asset>',
+        "default": "/path/to/main.js" // example
       }
     }
   }
-}
+})
 ```
 
 ### Assets
@@ -56,7 +67,7 @@ As recommended on Vite's [backend integration guide](https://vitejs.dev/guide/ba
 
 ```javascript
 // Add this at the beginning of your app entry.
-import 'vite/modulepreload-polyfill';
+import "vite/modulepreload-polyfill";
 ```
 
 ## Usage
@@ -95,11 +106,15 @@ Include this in your base HTML template file.
 Then in your `<head>` element add this :
 
 ```
+{% vite_react_refresh %} // React only
 {% vite_hmr_client %}
 ```
 
 - This will add a `<script>` tag to include the ViteJS HMR client.
-- This tag will include this script only if `DJANGO_VITE_DEV_MODE` is true,
+- If you are using React with `@vitejs/plugin-react`, you'll also need to add the React tag above
+  every other tag, since the plugin is not able to modify the HTML you are serving. HMR will not
+  work without it.
+- These tags will include scripts only if `DJANGO_VITE_DEV_MODE` is true,
   otherwise this will do nothing.
 
 Then add this tag (in your `<head>` element too) to load your scripts :
